@@ -13,6 +13,7 @@ from fac.utils import (JSONDict, ProgressWidget,
                        Version, parse_game_version, match_game_version)
 
 from fac.errors import ModNotFoundError, AuthError, OwnershipError
+from fac.files import EnvConfig
 
 
 class Mod:
@@ -92,9 +93,9 @@ class ZippedMod(Mod):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.basename = os.path.splitext(
-                os.path.basename(
-                    self.location
-                )
+            os.path.basename(
+                self.location
+            )
         )[0]
         self.parent = os.path.abspath(
             os.path.dirname(self.location)
@@ -276,6 +277,7 @@ class ModManager:
         self.config = config
         self.db = db
         self.mods_json = None
+        self.envs = None
 
     def load(self):
         self.mods_json = JSONFile(
@@ -286,6 +288,12 @@ class ModManager:
         )
         if 'mods' not in self.mods_json:
             self.mods_json.mods = []
+        dirname = os.path.dirname(self.config.config_file)
+        if os.path.isfile(os.path.join(dirname, 'envs.conf')):
+            env_file = os.path.join(dirname, 'envs.conf')
+        else:
+            env_file = None
+        self.envs = EnvConfig(env_file, self.config, self)
 
     def get_mod_json(self, name):
         """Return the mod json configuration from mods-list.json"""

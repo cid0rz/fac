@@ -9,7 +9,7 @@ from appdirs import user_config_dir, user_data_dir
 
 from fac.utils import JSONDict, Version
 
-__all__ = ['Config', 'JSONFile']
+__all__ = ['Config', 'EnvConfig', 'JSONFile']
 
 FACTORIO_SEARCH_PATHS = [
     '.',
@@ -81,7 +81,6 @@ class Config(ConfigParser):
         self.hold = []
         self.forced_game_version = None
         self.forced_mods_directory = None
-
         if config_file:
             self.config_file = config_file
         else:
@@ -96,6 +95,7 @@ class Config(ConfigParser):
     def load(self):
         self.read(self.config_file)
         self.hold = self.get('mods', 'hold').split()
+        dirname = os.path.dirname(self.config_file)
 
     def save(self):
         dirname = os.path.dirname(self.config_file)
@@ -224,6 +224,156 @@ class Config(ConfigParser):
         self.forced_mods_directory = directory
 
     mods_directory = property(get_mods_directory, set_mods_directory)
+
+
+class EnvConfig(ConfigParser):
+    '''Helper class to manage different environments. It will be called from Config object and there will be a default configuration with a default environment called 'default'. The format of the file is:
+
+    [env_name1]
+    data-path =
+    write-path =
+    disabled =
+    held =
+
+    [env_name2]
+    data-path =
+    write-path =
+    disabled =
+    held =
+
+    .
+    .
+    .
+
+    [env_nameN]
+    data-path =
+    write-path =
+    disabled =
+    held =
+    '''
+
+    default_config = '''
+    [default]
+    data-path =
+    write-path =
+    disabled =
+    held =
+    '''
+
+    def __init__(self, env_file=None, config=None, manager=None):
+        super().__init__(allow_no_value=True)
+
+        self.envs = {}
+        self.env_names = self.envs.keys()
+        self.conf = config
+        self.manager = manager
+
+        if env_file:
+            self.env_file = env_file
+            if os.path.isfile(self.env_file):
+                self.load()
+            elif os.path.isfile(os.path.join(user_config_dir('fac', appauthor=False), 'envs.conf')):
+                self.env_file = os.path.join(user_config_dir(
+                    'fac', appauthor=False), 'envs.conf')
+                self.load()
+        else:
+            self.env_file = os.path.join(user_config_dir(
+                'fac', appauthor=False), 'envs.conf')
+            print("creating a envs config file for fac envirnoments in \
+            (%s) with current environment as 'default'" % self.env_file)
+            os.write
+            self.read_string(self.default_config)
+            self.set('default', 'data-path', self.conf.factorio_data_path)
+            self.set('default', 'write-path', self.conf.factorio_write_path)
+            mods = self.manager.find_mods()
+            dis = [
+                mod.name for mod in mods if not self.manager.is_mod_enabled(mod.name)]
+            self.set('default', 'disabled', str(dis))
+            held = self.conf.hold
+            self.set('default', 'held', held)
+
+    def load(self):
+        self.read(self.env_file)
+        self.envs = self._sections
+        #print("debug" + '\n' + str(self.env_names) + '\n' + str(self.sections()))
+        # print(self.envs)
+
+    def save(self):
+        dirname = os.path.dirname(self.env_file)
+
+        for env in self.envs:
+            data_path = self.envs[env]['data-path']
+            write_path = self.envs[env]['write-path']
+            disabled = self.envs[env]['disabled']
+            held = self.envs[env]['held']
+            self.set(env, 'data-path', data_path)
+            self.set(env, 'write-path', write_path)
+            self.set(env, 'disabled', disabled)
+            self.set(env, 'held', held)
+
+        if not os.path.isdir(dirname):
+            os.makedirs(dirname)
+
+        with open(self.env_file, 'w', encoding='utf-8') as f:
+            self.write(f)
+
+    def activate_env(self, name):
+        if name not in self.sections:
+            print('env {0} not found'.format(name))
+        else:
+
+            data = self.get(name, 'data_path')
+            if not self.conf.is_factorio_data_path(data):
+                print('wrong data path {} on environment {}'.format(data, name))
+                return
+            else:
+                self.conf.data_path = data
+
+            write = self.get(name, 'write_path')
+            if not self.conf.is_factorio_write_path(write):
+                print('wrong  path {} on environment {}'.format(data, name))
+                return
+            else:
+                self.conf.write_path = write
+
+            dis = self.get(name, 'disabled')
+            for mod in dis:
+                if mod in [installed.name for installed in self.manager.find_mods()]:
+                    self.manager.set_mod_enabled(mod, enabled=False)
+                    print('{} has been disabled'.format(mod.name))
+                else:
+                    print('{} is not installed so cannot be disabled')
+
+            held = self.get(name, 'held')
+            self.conf.hold = held
+            print('mods held :'.format(self.conf.hold))
+
+    def create_env(self, name):
+        self.add_section(name)
+        self.set(name, 'data-path', self.conf.factorio_data_path)
+        self.set(name, 'write-path', self.conf.factorio_write_path)
+        mods = self.manager.find_mods()
+        dis = [
+            mod.name for mod in mods if not self.manager.is_mod_enabled(mod.name)]
+        self.set(name, 'disabled', str(dis))
+        held = self.conf.hold
+        self.set(name, 'held', held)
+
+    def delete_env(self, name):
+        if name not in self.sections:
+            print('env {0} not found'.format(name))
+        else:
+            print('removing    '.format(name))
+            self.remove_section(name)
+
+    def list_envs(self):
+        print('\n list of environments:')
+        for env in self.sections():
+            print(env)
+            for opt in self.options(env):
+                print('    {:12} {} '.format(opt+':', self.get(env, opt)))
+            print()
+        return
 
 
 class JSONFile(JSONDict):

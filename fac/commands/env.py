@@ -13,17 +13,17 @@ class EnvCommand(Command):
 
         Arg('env_name',
             help="environment to operate with",
-            nargs='?')
+            nargs='*')
     ]
 
     def run(self, args):
         if args.action == 'activate':
-            self.manager.envs.activate_env(args.env_name)
+            self.manager.env_manager.activate_env(args.env_name)
         elif args.action == 'create':
-            self.manager.envs.create_env(args.env_name)
+            self.manager.env_manager.create_env(args.env_name)
         elif args.action == 'remove':
-            self.manager.envs.delete_env(args.env_name)
+            self.manager.env_manager.delete_env(args.env_name)
         elif args.action == 'list':
-            self.manager.envs.list_envs()
+            self.manager.env_manager.list_envs()
 
-        self.manager.envs.save()
+        self.manager.env_manager.save()

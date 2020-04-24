@@ -29,6 +29,8 @@ class EnableDisableCommand(Command):
                 else:
                     print("%s is now %sd" % (mod.name, self.name))
 
+        self.manager.env_manager2.save_env()
+
 
 class EnableCommand(EnableDisableCommand):
     """Enable mods."""

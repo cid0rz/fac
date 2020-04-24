@@ -33,6 +33,7 @@ class HoldCommand(Command):
                     print("    %s" % name)
             else:
                 print("No held mods.")
+        self.manager.env_manager.save_env()
 
 
 class UnholdCommand(Command):
@@ -63,3 +64,4 @@ class UnholdCommand(Command):
                           mod_name)
                 else:
                     print("%s is not held." % mod_name)
+        self.manager.env_manager.save_env()

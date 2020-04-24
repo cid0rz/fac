@@ -277,7 +277,7 @@ class ModManager:
         self.config = config
         self.db = db
         self.mods_json = None
-        self.envs = None
+        self.env_manager = None
 
     def load(self):
         self.mods_json = JSONFile(
@@ -293,7 +293,7 @@ class ModManager:
             env_file = os.path.join(dirname, 'envs.conf')
         else:
             env_file = None
-        self.envs = EnvConfig(env_file, self.config, self)
+        self.env_manager = EnvConfig(env_file, self.config, self)
 
     def get_mod_json(self, name):
         """Return the mod json configuration from mods-list.json"""
